@@ -126,7 +126,7 @@
                   }
                 },
                 created: function () {
-                  axios.get('/json/list.json')
+                  axios.get('json/list.json')
                     .then(function (res) {
                       list.items = res.data;
                       for (var i = 0; i < list.items.length; i++) {
