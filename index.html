@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="">
+  <meta name="keywords" content="">
+  <title>ネームリスト一覧</title>
+
+  <meta itemprop="description" content="">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css"
+    integrity="sha256-oSrCnRYXvHG31SBifqP2PM1uje7SJUyX0nTwO2RJV54=" crossorigin="anonymous" />
+  <link href="/styles.css" rel="stylesheet">
+
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue-lazyload@1.2.6/vue-lazyload.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue-router@3.0.6/dist/vue-router.min.js"></script>
+</head>
+
+<body>
+
+  <main>
+    <div class="container">
+      <div class="container__row">
+        <div class="col-sm-12">
+          <article class="pages">
+            <section class="itemName" id="js-nameList" v-cloak>
+              <div class="itemName__top">
+                <div class="itemName__head">
+                  <div class="itemName__head__txt">ネームリスト一覧（<span>{{sum}}</span>）</div>
+                </div>
+                <div class="itemName__labels">
+                  <ul class="itemName__labels__body">
+                    <li class="itemName__labels__item" v-for="(ctgItem, index) in categories" :key="index">
+                      <router-link
+                        :class="['itemName__labels__btn', {'itemName__labels__btn--active': (currentCtg === ctgItem.text)}]"
+                        tag="button" :to="{ path: '', query: {label: ctgItem.text}}">{{ctgItem.text}}({{ctgItem.num}})
+                      </router-link>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div class="itemName__middle">
+                <div class="itemName__list">
+                  <div class="nameList">
+                    <transition-group class="nameList__body" name="fade" tag="ul">
+                      <li class="nameList__item" v-for="(item, index) in items" :key="index"
+                        v-show="(item.category === currentCtg || currentCtg === 'ALL')">
+                        <article class="nameCard">
+                          <a class="nameCard__link" href="#" :href="item.url">
+                            <h2 class="nameCard__name">{{item.name}}</h2>
+                            <p :class="['nameCard__label',
+                          {'nameCard__label--A': (item.category === 'Category A')},
+                          {'nameCard__label--B': (item.category === 'Category B')},
+                          {'nameCard__label--C': (item.category === 'Category C')}
+                          ]">{{item.category}}</p>
+                            <div class="nameCard__img">
+                              <div class="nameCard__img__inner">
+                                <img src="/" v-lazy="item.logo" alt="">
+                              </div>
+                            </div>
+                          </a>
+                        </article>
+                        <!-- /.nameCard -->
+                      </li>
+                    </transition-group>
+                  </div>
+                  <!-- /.nameList -->
+                </div>
+              </div>
+            </section>
+            <!-- /.itemName -->
+
+            <script>
+              Vue.use(VueLazyload, {
+                error: 'http://placehold.jp/BFBFBF/222222/320x210.png?text=ERROR',
+                loading: '/img/loading.gif'
+              });
+
+              var routes = [{
+                path: location.pathname,
+                meta: {
+                  title: document.title
+                }
+              }];
+              var router = new VueRouter({
+                mode: 'history',
+                routes: routes
+              })
+              var list = new Vue({
+                router: router,
+                el: '#js-nameList',
+                data: {
+                  items: [],
+                  sum: 0,
+                  categories: [
+                    { text: 'ALL', num: 0 },
+                    { text: 'Category A', num: 0 },
+                    { text: 'Category B', num: 0 },
+                    { text: 'Category C', num: 0 },
+                  ],
+                  currentCtg: 'ALL'
+                },
+                computed: {
+                },
+                methods: {
+                  queryPage: function () {
+                    if (typeof this.$route.query.label !== 'undefined' && this.$route.query.label !== null && this.$route.query.label !== '') {
+                      this.currentCtg = this.$route.query.label;
+                    }
+                    else {
+                      this.currentCtg = 'ALL';
+                    }
+                  }
+                },
+                mounted: function () {
+                  this.queryPage();
+                },
+                watch: {
+                  '$route': function () {
+                    this.queryPage();
+                  }
+                },
+                created: function () {
+                  axios.get('/json/list.json')
+                    .then(function (res) {
+                      list.items = res.data;
+                      for (var i = 0; i < list.items.length; i++) {
+                        for (var j = 1; j < list.categories.length; j++) {
+                          if (list.categories[j].text === list.items[i].category) {
+                            list.categories[j].num++;
+                          }
+                        }
+                        list.categories[0].num++;
+                        list.items[i].phonetic = replaceDakuToHan(list.items[i].phonetic);
+                      }
+                      list.items.sort(function (a, b) {
+                        if (a.phonetic < b.phonetic) return -1;
+                        else if (a.phonetic > b.phonetic) return 1;
+                        return 0;
+                      });
+                      list.sum = list.items.length;
+                    }).catch(function (error) {
+                    }).finally(function () {
+                    });
+                }
+              });
+              function replaceDakuToHan(str) {
+                if (str.length > 0) {
+                  var data = [
+                    ['が', 'か'], ['ぎ', 'き'], ['ぐ', 'く'], ['げ', 'け'], ['ご', 'こ'],
+                    ['ざ', 'さ'], ['じ', 'し'], ['ず', 'す'], ['ぜ', 'せ'], ['ぞ', 'そ'],
+                    ['だ', 'た'], ['ぢ', 'ち'], ['づ', 'つ'], ['で', 'て'], ['ど', 'と'],
+                    ['ば', 'は'], ['び', 'ひ'], ['ぶ', 'ふ'], ['べ', 'へ'], ['ぼ', 'ほ'],
+                    ['ぱ', 'は'], ['ぴ', 'ひ'], ['ぷ', 'ふ'], ['ぺ', 'へ'], ['ぽ', 'ほ']
+                  ];
+                  for (var i = 0; i < data.length; i++) {
+                    str = str.replace(new RegExp(data[i][0], 'g'), function () {
+                      return data[i][1];
+                    });
+                  }
+                }
+                return str;
+              }
+            </script>
+
+          </article>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+
+</html>
